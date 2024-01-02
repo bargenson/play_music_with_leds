@@ -38,6 +38,7 @@ void loop() {
 
 void listenButton() {
   if (isButtonPressed()) {
+    logger.println(F("Button pressed"), LogLevel::DEBUG);
     if (isActive()) {
       deactivate();
     } else {
@@ -53,8 +54,12 @@ int freeRam() {
 }
 
 void logStats() {
+  logger.println("========== Stats ==========");
   logger.println("SRAM left: " + String(freeRam()));
   logger.println("Active: " + String(isActive()));
+  logger.println("First noise threshold reached time: " + String(firstNoiseThresholdReachedTime));
+  logger.println("Last noise threshold reached time: " + String(lastNoiseThresholdReachedTime));
+  logger.println("===========================");
 }
 
 boolean isButtonPressed() {
@@ -98,8 +103,6 @@ void listenNoise() {
 void playMusic(Melody melody) {
   long nextPixelHue = rainbow(0);
 
-  // sizeof gives the number of bytes, each int value is composed of two bytes (16 bits)
-  // there are two values per note (pitch and duration), so for each note there are four bytes
   int numberOfNotes = melody.notes.size() / 2;
 
   // this calculates the duration of a whole note in ms
@@ -143,16 +146,8 @@ long rainbow() {
 }
 
 long rainbow(long firstPixelHue) {
-  for (int i = 0; i < strip.numPixels(); i++) { // For each pixel in strip...
-    // Offset pixel hue by an amount to make one full revolution of the
-    // color wheel (range of 65536) along the length of the strip
-    // (strip.numPixels() steps):
+  for (int i = 0; i < strip.numPixels(); i++) {
     int pixelHue = firstPixelHue + (i * 65536L / strip.numPixels());
-    // strip.ColorHSV() can take 1 or 3 arguments: a hue (0 to 65535) or
-    // optionally add saturation and value (brightness) (each 0 to 255).
-    // Here we're using just the single-argument hue variant. The result
-    // is passed through strip.gamma32() to provide 'truer' colors
-    // before assigning to each pixel:
     strip.setPixelColor(i, strip.gamma32(strip.ColorHSV(pixelHue)));
   }
   strip.show();
@@ -170,7 +165,7 @@ boolean detectNoise() {
       sum += lastNoiseDetections[i];
     }
     float noisePercentage = 100 - sum;
-    // logger.println("Percentage: " + String(noisePercentage));
+    logger.println("Percentage: " + String(noisePercentage), LogLevel::DEBUG);
     if (noisePercentage >= noisePercentageThreshold) {
       logger.println(F("Noise threshold reached"));
       lastNoiseThresholdReachedTime = currentTime;
@@ -185,7 +180,7 @@ boolean detectNoise() {
       }
     } else {
       if (firstNoiseThresholdReachedTime != -1 && currentTime - lastNoiseThresholdReachedTime > silenceDurationThreshold) {
-        logger.println("Silence detected");
+        logger.println(F("Silence detected"));
         firstNoiseThresholdReachedTime = -1;
       }
     }
