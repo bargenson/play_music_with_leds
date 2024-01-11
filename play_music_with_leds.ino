@@ -7,7 +7,7 @@
 #include "melodies.h"
 
 TaskOrchestrator* orchestrator;
-Logger logger(baudRate);
+Logger logger(baudRate, LogLevel::DEBUG);
 
 CircularBuffer<int, 100> lastNoiseDetections;
 boolean active;
