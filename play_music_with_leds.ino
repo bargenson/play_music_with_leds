@@ -13,9 +13,11 @@ CircularBuffer<int, 100> lastNoiseDetections;
 boolean active;
 long firstNoiseThresholdReachedTime = -1;
 long lastNoiseThresholdReachedTime = -1;
-Adafruit_NeoPixel strip(150, pin_ledStrip, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel strip(numberOfLeds, pin_ledStrip, NEO_GRB + NEO_KHZ800);
 
 void setup() {
+  randomSeed(analogRead(A0));
+
   std::unordered_map<int, TaskOrchestrator::TaskExecutor> scheduledTasks;
   scheduledTasks[0] = listenNoise;
   scheduledTasks[200] = listenButton;
@@ -28,6 +30,8 @@ void setup() {
   pinMode(pin_ledStrip, OUTPUT);
 
   strip.begin();
+  strip.clear();
+  strip.show();
 
   deactivate();
 }
@@ -43,8 +47,26 @@ void listenButton() {
       deactivate();
     } else {
       activate();
+      if (isLongButtonPress()) {
+        playMusic();
+        deactivate();
+      }
+      
     }
+    delay(500);
   }
+}
+
+bool isLongButtonPress() {
+  unsigned long pressTime = millis();
+  while (isButtonPressed()) {
+    unsigned long pressDuration = millis() - pressTime;
+    if (pressDuration > 3000) {
+      return true;
+    }
+    delay(100);
+  }
+  return false;
 }
 
 extern "C" char* sbrk(int incr);
@@ -94,14 +116,18 @@ void deactivate() {
 void listenNoise() {
   if (isActive()) {
     if (detectNoise()) {
-      Melody melody = melodies[random(0, 3)];
-      playMusic(melody);
+      playMusic();
     }
   }
 }
 
+void playMusic() {
+  Melody melody = melodies[random(0, sizeof(melodies) / sizeof(melodies[0]))];
+  playMusic(melody);
+}
+
 void playMusic(Melody melody) {
-  long nextPixelHue = rainbow(0);
+  rainbow(0);
 
   int numberOfNotes = melody.notes.size() / 2;
 
@@ -134,25 +160,20 @@ void playMusic(Melody melody) {
     // stop the waveform generation before the next note.
     noTone(pin_buzzer);
 
-    nextPixelHue = rainbow(melody.notes[thisNote]);
+    rainbow(melody.notes[thisNote]);
   }
 
   strip.clear();
   strip.show();
+  delay(500);
 }
 
-long rainbow() {
-  return rainbow(0);
-}
-
-long rainbow(long firstPixelHue) {
+void rainbow(long shift) {
   for (int i = 0; i < strip.numPixels(); i++) {
-    int pixelHue = firstPixelHue + (i * 65536L / strip.numPixels());
+    int pixelHue = (i + shift) * 65536L / strip.numPixels();
     strip.setPixelColor(i, strip.gamma32(strip.ColorHSV(pixelHue)));
   }
   strip.show();
-
-  return firstPixelHue + 256;
 }
 
 boolean detectNoise() {
@@ -175,6 +196,7 @@ boolean detectNoise() {
         if (lastNoiseThresholdReachedTime - firstNoiseThresholdReachedTime > noiseDurationThreshold) {
           logger.println(F("Long noise detected"));
           firstNoiseThresholdReachedTime = -1;
+          lastNoiseDetections.clear();
           return true;
         }
       }
