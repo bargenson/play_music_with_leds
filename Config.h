@@ -9,8 +9,10 @@ const int pin_buzzer = 2;
 const int pin_ledStrip = 3;
 const int pin_sound = 4;
 
-const long noiseDurationThreshold = 2000;
+const long noiseDurationThreshold = 1500;
 const long silenceDurationThreshold = 1500;
 const int noisePercentageThreshold = 20;
+
+const int numberOfLeds = 50; 
 
 #endif
